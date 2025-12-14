@@ -1,36 +1,109 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# منصة تعزيز الوعي المجتمعي - لوحة التحكم
 
-## Getting Started
+منصة تفاعلية لإدارة المحتوى المجتمعي، المقالات، الاستبيانات، والمستخدمين.
 
-First, run the development server:
+## 🚀 المميزات
 
+- 🎨 واجهة مستخدم حديثة وجذابة باستخدام Next.js 16 و Tailwind CSS
+- 🌓 دعم الوضع الليلي/النهاري (Dark/Light Mode)
+- 🔐 نظام مصادقة متكامل (Authentication)
+- 📊 لوحة تحكم تفاعلية مع رسوم بيانية (Recharts)
+- 📝 إدارة المقالات والفئات
+- 📊 إدارة استطلاعات الرأي
+- 👥 إدارة المستخدمين
+- 📋 إدارة الاستبيانات
+- 🌐 دعم كامل للغة العربية (RTL)
+- ⚡ أداء عالي مع Turbopack
+
+## 📋 المتطلبات
+
+- Node.js 18.x أو أحدث
+- npm أو yarn
+
+## 🔧 التثبيت
+
+1. تثبيت الحزم:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. إنشاء ملف `.env.local`:
+```env
+NEXT_PUBLIC_API_URL=http://localhost:5000
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. تشغيل خادم التطوير:
+```bash
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. فتح المتصفح على [http://localhost:3000](http://localhost:3000)
 
-## Learn More
+## 🏗️ البناء للإنتاج
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm run build
+npm start
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🎯 الصفحات
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `/login` - صفحة تسجيل الدخول
+- `/dashboard` - لوحة التحكم الرئيسية
+- `/dashboard/articles` - إدارة المقالات
+- `/dashboard/polls` - استطلاعات الرأي
+- `/dashboard/surveys` - الاستبيانات
+- `/dashboard/users` - إدارة المستخدمين
 
-## Deploy on Vercel
+## 🛠️ التقنيات المستخدمة
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- **Framework:** Next.js 16.0.1
+- **Styling:** Tailwind CSS
+- **Language:** TypeScript
+- **Charts:** Recharts
+- **HTTP Client:** Axios
+- **Notifications:** React Hot Toast
+- **Theme:** next-themes
+- **Icons:** Lucide React
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 📁 البنية
+
+```
+my-next-app/
+├── app/
+│   ├── (auth)/login/        # صفحة تسجيل الدخول
+│   ├── dashboard/           # صفحات لوحة التحكم
+│   ├── layout.tsx           # التخطيط الرئيسي
+│   └── providers.tsx        # مزودات السياق
+├── components/
+│   ├── atoms/               # مكونات أساسية
+│   ├── molecules/           # مكونات مركبة
+│   ├── organisms/           # مكونات معقدة
+│   └── providers/           # مزودات
+├── lib/
+│   ├── api.ts              # واجهات API
+│   ├── auth-context.tsx    # سياق المصادقة
+│   └── utils.ts            # وظائف مساعدة
+└── middleware.ts           # وسيط المصادقة
+```
+
+## 🔐 المصادقة
+
+- يستخدم JWT tokens
+- الحماية عبر middleware.ts
+- Context API لحالة المصادقة
+- إعادة توجيه تلقائية للمستخدمين غير المصادق عليهم
+
+## 🎨 التخصيص
+
+الألوان مُعرّفة في `app/globals.css` باستخدام متغيرات CSS ويمكن تخصيصها بسهولة.
+
+## 📝 ملاحظات
+
+- البيانات يتم جلبها من API على `http://localhost:5000`
+- جميع الصفحات محمية بنظام المصادقة ما عدا `/login`
+- التطبيق يدعم الوضع الليلي والنهاري تلقائياً
+
+## 📄 الترخيص
+
+هذا المشروع مفتوح المصدر.

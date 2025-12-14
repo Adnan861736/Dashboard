@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run dev:*)",
+      "Bash(taskkill:*)",
+      "Bash(nul)",
+      "Bash(pkill:*)",
+      "Bash(Remove-Item -Path \".next\" -Recurse -Force -ErrorAction SilentlyContinue)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(find:*)",
+      "Bash(curl:*)",
+      "Bash(powershell:*)",
+      "Bash(timeout /t 3 /nobreak)",
+      "Bash(mkdir:*)",
+      "Bash(touch:*)",
+      "Bash(dir:*)",
+      "Bash(npx tsc:*)",
+      "Bash(ls -lah \"c:\\Users\\Lenovo\\Desktop\\Zenobia\\app\\dashboard\\games\"\" && echo \"---\" && head -50 \"c:UsersLenovoDesktopZenobiaappdashboardgamespage.tsx \")"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
