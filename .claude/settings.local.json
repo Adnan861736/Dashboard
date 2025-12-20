@@ -18,7 +18,8 @@
       "Bash(touch:*)",
       "Bash(dir:*)",
       "Bash(npx tsc:*)",
-      "Bash(ls -lah \"c:\\Users\\Lenovo\\Desktop\\Zenobia\\app\\dashboard\\games\"\" && echo \"---\" && head -50 \"c:UsersLenovoDesktopZenobiaappdashboardgamespage.tsx \")"
+      "Bash(ls -lah \"c:\\Users\\Lenovo\\Desktop\\Zenobia\\app\\dashboard\\games\"\" && echo \"---\" && head -50 \"c:UsersLenovoDesktopZenobiaappdashboardgamespage.tsx \")",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  # تطبيق Next.js
+  zenobia-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: zenobia-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      # متغيرات البيئة - يجب تعديلها حسب إعداداتك
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=http://192.168.1.100:4005
+    volumes:
+      # ربط ملفات البيئة (اختياري)
+      - ./.env.local:/app/.env.local:ro
+    networks:
+      - zenobia-network
+    restart: unless-stopped
+    depends_on:
+      - zenobia-backend
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Backend API (اختياري - إذا كان لديك backend)
+  zenobia-backend:
+    image: node:20-alpine
+    container_name: zenobia-backend
+    working_dir: /app
+    ports:
+      - "4005:4005"
+    # يمكنك إضافة volumes للـ backend إذا كان لديك
+    # volumes:
+    #   - ../backend:/app
+    networks:
+      - zenobia-network
+    restart: unless-stopped
+    # command: npm start
+    # إذا كان لديك backend جاهز، قم بإلغاء التعليق عن الأمر أعلاه
+
+networks:
+  zenobia-network:
+    driver: bridge
+
+volumes:
+  # يمكنك إضافة volumes للبيانات الدائمة
+  zenobia-data:
+    driver: local

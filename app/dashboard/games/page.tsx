@@ -67,7 +67,7 @@ export default function GamesPage() {
   ]);
 
   // Puzzle specific
-  const [pieces, setPieces] = useState(100);
+  const [pieces, setPieces] = useState(9);
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
   const [imageUrl, setImageUrl] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -82,7 +82,26 @@ export default function GamesPage() {
       setLoading(true);
       const response = await gamesAPI.getAll();
       const gamesData = response.data.data || [];
-      setGames(gamesData);
+
+      // Parse content field from string to object
+      const parsedGames = gamesData.map((game: any) => {
+        try {
+          // Parse content if it's a string
+          const content = typeof game.content === 'string'
+            ? JSON.parse(game.content)
+            : game.content;
+
+          return {
+            ...game,
+            content
+          };
+        } catch (parseError) {
+          console.error('Error parsing game content:', parseError, game);
+          return game;
+        }
+      });
+
+      setGames(parsedGames);
     } catch (error: any) {
       console.error('Error fetching games:', error);
       const errorMessage =
@@ -214,13 +233,34 @@ export default function GamesPage() {
     setPointsReward(game.pointsReward);
 
     if (game.type === 'crossword') {
-      const content = game.content as CrosswordContent;
-      setWords(content.words && content.words.length > 0 ? content.words : [
+      let content = game.content as any;
+
+      // Handle different content structures
+      let words: GameWord[] = [];
+
+      if (content.words && Array.isArray(content.words)) {
+        // New structure: {words: [...]}
+        words = content.words;
+      } else if (content.grid && content.clues) {
+        // Old structure: {grid: [...], clues: {...}}
+        // Skip old structure games or provide default
+        words = [
+          { number: 1, direction: 'across', question: '', answer: '', position: { row: 0, col: 0 } },
+        ];
+        toast.error('هذه اللعبة تستخدم هيكل قديم، يرجى إعادة إنشائها');
+      } else {
+        // Fallback
+        words = [
+          { number: 1, direction: 'across', question: '', answer: '', position: { row: 0, col: 0 } },
+        ];
+      }
+
+      setWords(words.length > 0 ? words : [
         { number: 1, direction: 'across', question: '', answer: '', position: { row: 0, col: 0 } },
       ]);
     } else {
       const content = game.content as PuzzleContent;
-      setPieces(content.pieces || 100);
+      setPieces(content.pieces || 9);
       setDifficulty(content.difficulty || 'medium');
       setImageUrl(content.imageUrl || '');
       setImageFile(null);
@@ -265,7 +305,7 @@ export default function GamesPage() {
     setEducationalMessage('');
     setPointsReward(10);
     setWords([{ number: 1, direction: 'across', question: '', answer: '', position: { row: 0, col: 0 } }]);
-    setPieces(100);
+    setPieces(9);
     setDifficulty('medium');
     setImageUrl('');
     setImageFile(null);
@@ -347,11 +387,12 @@ export default function GamesPage() {
       </div>
 
       {/* Games Grid */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
         {filteredGames.length === 0 ? (
-          <div className="col-span-full text-center p-12 border-2 border-dashed border-border rounded-lg">
+          <div className="col-span-full text-center p-12 border-2 border-dashed border-border rounded-lg bg-muted/20">
             <Gamepad2 className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-            <p className="text-lg text-muted-foreground">لا توجد ألعاب</p>
+            <p className="text-lg font-medium text-foreground">لا توجد ألعاب</p>
+            <p className="text-sm text-muted-foreground mt-1">ابدأ بإضافة لعبة تعليمية جديدة</p>
             <Button
               onClick={() => {
                 resetForm();
@@ -366,113 +407,119 @@ export default function GamesPage() {
           </div>
         ) : (
           filteredGames.map((game) => (
-            <Card key={game.id} className="hover:shadow-lg transition-shadow">
-              <CardHeader>
+            <Card key={game.id} className="group hover:shadow-xl hover:scale-[1.02] transition-all duration-300 overflow-hidden">
+              <CardHeader className="pb-3">
                 <div className="flex justify-between items-start gap-2">
                   <div className="flex-1">
-                    <CardTitle className="text-lg line-clamp-2">
+                    <CardTitle className="text-base font-bold line-clamp-2 group-hover:text-primary transition-colors">
                       {game.title}
                     </CardTitle>
-                    <div className="mt-2 flex items-center gap-2">
-                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-primary/10 text-primary">
+                    <div className="mt-2 flex items-center gap-2 flex-wrap">
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${
+                        game.type === 'crossword'
+                          ? 'bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400'
+                          : 'bg-purple-500/10 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400'
+                      }`}>
                         <Gamepad2 className="h-3 w-3" />
-                        {game.type === 'crossword'
-                          ? 'كلمات متقاطعة'
-                          : 'أحجية'}
+                        {game.type === 'crossword' ? 'كلمات متقاطعة' : 'أحجية'}
+                      </span>
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-success/10 text-success">
+                        <Trophy className="h-3 w-3" />
+                        {game.pointsReward} نقطة
                       </span>
                     </div>
                   </div>
                 </div>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {game.type === 'crossword' && (
-                    <div className="text-sm space-y-1">
-                      <p className="text-muted-foreground">
-                        عدد الكلمات:{' '}
-                        <span className="font-medium text-foreground">
-                          {(game.content as CrosswordContent).words?.length || 0}
-                        </span>
-                      </p>
-                    </div>
-                  )}
+              <CardContent className="pt-0">
+                <div className="space-y-3">
+                  {/* Game Type Specific Content */}
+                  {game.type === 'crossword' && (() => {
+                    const content = game.content as any;
+                    const wordsCount = content.words?.length || 0;
+                    const isOldFormat = content.grid && content.clues;
 
-                  {game.type === 'puzzle' && (
-                    <div className="text-sm space-y-1">
-                      <p className="text-muted-foreground">
-                        عدد القطع:{' '}
-                        <span className="font-medium text-foreground">
-                          {(game.content as PuzzleContent).pieces || 'غير محدد'}
-                        </span>
-                      </p>
-                      <p className="text-muted-foreground">
-                        مستوى الصعوبة:{' '}
-                        <span className="font-medium text-foreground">
-                          {(game.content as PuzzleContent).difficulty === 'easy'
-                            ? 'سهل'
-                            : (game.content as PuzzleContent).difficulty === 'medium'
-                            ? 'متوسط'
-                            : (game.content as PuzzleContent).difficulty === 'hard'
-                            ? 'صعب'
-                            : 'غير محدد'}
-                        </span>
-                      </p>
-                      {(game.content as PuzzleContent).imageUrl && (() => {
-                        const imageUrl = (game.content as PuzzleContent).imageUrl!;
-                        return (
-                          <div className="mt-2 pt-2 border-t border-border">
+                    return (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm">
+                          <div className="flex-1 bg-muted/50 rounded-lg p-2.5">
+                            <p className="text-xs text-muted-foreground mb-0.5">عدد الكلمات</p>
+                            <p className="font-bold text-lg text-foreground">{wordsCount}</p>
+                          </div>
+                        </div>
+                        {isOldFormat && (
+                          <p className="text-xs text-warning bg-warning/10 px-2 py-1.5 rounded-md flex items-center gap-1">
+                            ⚠️ هيكل قديم - يُنصح بإعادة الإنشاء
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  {game.type === 'puzzle' && (() => {
+                    const content = game.content as PuzzleContent;
+                    const imageUrl = content.imageUrl;
+
+                    return (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm">
+                          <div className="flex-1 bg-muted/50 rounded-lg p-2.5">
+                            <p className="text-xs text-muted-foreground mb-0.5">عدد القطع</p>
+                            <p className="font-bold text-lg text-foreground">{content.pieces || 'غير محدد'}</p>
+                          </div>
+                        </div>
+                        {imageUrl && (
+                          <div className="relative w-full h-40 rounded-lg overflow-hidden bg-muted/30 group-hover:ring-2 group-hover:ring-primary/20 transition-all">
                             <img
                               src={imageUrl.startsWith('http')
                                 ? imageUrl
                                 : `${process.env.NEXT_PUBLIC_API_URL || 'http://192.168.1.100:4005'}${imageUrl}`}
                               alt={game.title}
-                              className="w-full h-32 object-cover rounded-lg"
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                               onError={(e) => {
                                 e.currentTarget.style.display = 'none';
                               }}
                             />
                           </div>
-                        );
-                      })()}
-                    </div>
-                  )}
+                        )}
+                      </div>
+                    );
+                  })()}
 
+                  {/* Educational Message */}
                   {game.educationalMessage && (
-                    <p className="text-xs text-muted-foreground line-clamp-2 pt-2 border-t border-border">
-                      {game.educationalMessage}
-                    </p>
+                    <div className="bg-blue-500/5 border border-blue-500/10 rounded-lg p-2.5">
+                      <p className="text-xs text-muted-foreground line-clamp-2">
+                        💡 {game.educationalMessage}
+                      </p>
+                    </div>
                   )}
 
-                  <div className="flex items-center justify-between text-sm pt-2">
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1.5 bg-success/10 text-success px-3 py-1.5 rounded-lg font-bold">
-                        <Trophy className="h-4 w-4" />
-                        <span>{game.pointsReward}</span>
-                      </div>
+                  {/* Admin Info */}
+                  {game.admin && (
+                    <div className="text-xs text-muted-foreground pt-2 border-t border-border">
+                      👤 بواسطة: <span className="font-medium">{game.admin.name}</span>
                     </div>
-                    {game.admin && (
-                      <div className="text-xs text-muted-foreground">
-                        بواسطة: {game.admin.name}
-                      </div>
-                    )}
-                  </div>
+                  )}
 
-                  <div className="flex gap-2 pt-2 border-t border-border justify-end">
+                  {/* Action Buttons */}
+                  <div className="flex gap-2 pt-2 border-t border-border">
                     <Button
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
                       onClick={() => openEditModal(game)}
-                      className="h-9 w-9 p-0"
+                      className="flex-1 h-9 group/edit hover:bg-primary/5 hover:border-primary/50"
                     >
-                      <Edit className="h-4 w-4" />
+                      <Edit className="h-3.5 w-3.5 ml-1.5 group-hover/edit:text-primary" />
+                      تعديل
                     </Button>
                     <Button
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
                       onClick={() => handleDeleteClick(game.id)}
-                      className="h-9 w-9 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                      className="h-9 px-3 text-destructive hover:bg-destructive/10 hover:border-destructive/50"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>
                 </div>
@@ -614,54 +661,143 @@ export default function GamesPage() {
                             />
                           </div>
 
-                          <div className="grid grid-cols-4 gap-2">
-                            <Input
-                              type="number"
-                              min="1"
-                              value={word.number}
-                              onChange={(e) =>
-                                updateWord(index, 'number', parseInt(e.target.value) || 1)
-                              }
-                              placeholder="رقم"
-                              required
-                            />
-                            <Input
-                              type="number"
-                              min="0"
-                              value={word.position.row}
-                              onChange={(e) =>
-                                updateWord(
-                                  index,
-                                  'position',
-                                  { ...word.position, row: parseInt(e.target.value) || 0 }
-                                )
-                              }
-                              placeholder="صف"
-                              required
-                            />
-                            <Input
-                              type="number"
-                              min="0"
-                              value={word.position.col}
-                              onChange={(e) =>
-                                updateWord(
-                                  index,
-                                  'position',
-                                  { ...word.position, col: parseInt(e.target.value) || 0 }
-                                )
-                              }
-                              placeholder="عمود"
-                              required
-                            />
-                            <Select
-                              value={word.direction}
-                              onValueChange={(value: any) =>
-                                updateWord(index, 'direction', value)
-                              }
-                            >
-                              <option value="across">أفقي</option>
-                              <option value="down">عمودي</option>
-                            </Select>
+                          <div className="space-y-3">
+                            <div className="grid grid-cols-2 gap-3">
+                              {/* Word Number - Read-only, Auto-generated */}
+                              <div className="space-y-1.5">
+                                <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                                  رقم الكلمة
+                                  <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded">تلقائي</span>
+                                </label>
+                                <Input
+                                  type="number"
+                                  value={word.number}
+                                  readOnly
+                                  disabled
+                                  className="bg-muted/50 cursor-not-allowed text-muted-foreground"
+                                  title="يتم تعيين رقم الكلمة تلقائياً بناءً على الترتيب"
+                                />
+                                <p className="text-[10px] text-muted-foreground">
+                                  يتم ترقيم الكلمات تلقائياً
+                                </p>
+                              </div>
+
+                              {/* Direction */}
+                              <div className="space-y-1.5">
+                                <label className="text-xs font-medium text-muted-foreground">
+                                  الاتجاه
+                                </label>
+                                <Select
+                                  value={word.direction}
+                                  onValueChange={(value: any) =>
+                                    updateWord(index, 'direction', value)
+                                  }
+                                >
+                                  <option value="across">أفقي ←</option>
+                                  <option value="down">عمودي ↓</option>
+                                </Select>
+                                <p className="text-[10px] text-muted-foreground">
+                                  اتجاه الكلمة في الشبكة
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Position - Row and Column */}
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="space-y-1.5">
+                                <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                                  موقع الصف
+                                  <span className="text-[10px] text-primary">↕</span>
+                                </label>
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  value={word.position.row}
+                                  onChange={(e) =>
+                                    updateWord(
+                                      index,
+                                      'position',
+                                      { ...word.position, row: parseInt(e.target.value) || 0 }
+                                    )
+                                  }
+                                  placeholder="0"
+                                  required
+                                  className="text-center font-mono"
+                                />
+                                <p className="text-[10px] text-muted-foreground">
+                                  رقم الصف من الأعلى (يبدأ من 0)
+                                </p>
+                              </div>
+
+                              <div className="space-y-1.5">
+                                <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                                  موقع العمود
+                                  <span className="text-[10px] text-primary">↔</span>
+                                </label>
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  value={word.position.col}
+                                  onChange={(e) =>
+                                    updateWord(
+                                      index,
+                                      'position',
+                                      { ...word.position, col: parseInt(e.target.value) || 0 }
+                                    )
+                                  }
+                                  placeholder="0"
+                                  required
+                                  className="text-center font-mono"
+                                />
+                                <p className="text-[10px] text-muted-foreground">
+                                  رقم العمود من اليمين (يبدأ من 0)
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Visual Helper */}
+                            <div className="p-3 bg-muted/30 rounded-lg border border-border">
+                              <p className="text-xs text-muted-foreground mb-2 font-medium">
+                                💡 مساعد بصري:
+                              </p>
+                              <div className="grid gap-1 w-fit" style={{ gridTemplateColumns: `repeat(${Math.max(word.position.col + 3, 5)}, minmax(0, 1fr))` }}>
+                                {[...Array(Math.max(word.position.row + 2, 3))].map((_, rowIdx) => (
+                                  <React.Fragment key={rowIdx}>
+                                    {[...Array(Math.max(word.position.col + 3, 5))].map((_, colIdx) => {
+                                      const isTarget = rowIdx === word.position.row && colIdx === word.position.col;
+                                      const isWordPath = word.direction === 'across'
+                                        ? (rowIdx === word.position.row && colIdx >= word.position.col && colIdx < word.position.col + word.answer.length)
+                                        : (colIdx === word.position.col && rowIdx >= word.position.row && rowIdx < word.position.row + word.answer.length);
+
+                                      return (
+                                        <div
+                                          key={`${rowIdx}-${colIdx}`}
+                                          className={`w-7 h-7 border text-[9px] flex items-center justify-center font-medium ${
+                                            isTarget
+                                              ? 'bg-primary text-primary-foreground border-primary font-bold ring-2 ring-primary ring-offset-1'
+                                              : isWordPath && word.answer.length > 0
+                                              ? 'bg-primary/20 border-primary/50 text-primary'
+                                              : 'bg-background border-border text-muted-foreground/60'
+                                          }`}
+                                        >
+                                          {isTarget ? '★' : `${rowIdx},${colIdx}`}
+                                        </div>
+                                      );
+                                    })}
+                                  </React.Fragment>
+                                ))}
+                              </div>
+                              <div className="mt-2 space-y-1">
+                                <p className="text-[10px] text-muted-foreground">
+                                  ★ = نقطة بداية الكلمة (صف {word.position.row}، عمود {word.position.col})
+                                </p>
+                                {word.answer.length > 0 && (
+                                  <p className="text-[10px] text-primary/80">
+                                    {word.direction === 'across' ? '←' : '↓'} مسار الكلمة "{word.answer}" ({word.answer.length} حرف)
+                                  </p>
+                                )}
+                              </div>
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -722,29 +858,28 @@ export default function GamesPage() {
                       <label className="text-sm font-medium">عدد القطع</label>
                       <Input
                         type="number"
-                        min="4"
-                        max="1000"
-                        step="4"
+                        min="1"
+                        max="10000"
                         value={pieces}
-                        onChange={(e) => setPieces(parseInt(e.target.value) || 100)}
+                        onChange={(e) => {
+                          const value = parseInt(e.target.value);
+                          if (!isNaN(value) && value >= 1 && value <= 10000) {
+                            setPieces(value);
+                          } else if (e.target.value === '') {
+                            setPieces(1);
+                          }
+                        }}
+                        onBlur={(e) => {
+                          const value = parseInt(e.target.value);
+                          if (isNaN(value) || value < 1) {
+                            setPieces(9);
+                          }
+                        }}
                         required
                       />
                       <p className="text-xs text-muted-foreground">
-                        عدد قطع البازل (يفضل أن يكون رقماً زوجياً)
+                        أدخل أي رقم صحيح من 1 إلى 10000 (زوجي أو فردي)
                       </p>
-                    </div>
-
-                    {/* Difficulty */}
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">مستوى الصعوبة</label>
-                      <Select
-                        value={difficulty}
-                        onValueChange={(value: any) => setDifficulty(value)}
-                      >
-                        <option value="easy">سهل</option>
-                        <option value="medium">متوسط</option>
-                        <option value="hard">صعب</option>
-                      </Select>
                     </div>
                   </>
                 )}
