@@ -20,6 +20,10 @@ FROM base AS builder
 
 WORKDIR /app
 
+# استقبال build argument
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
 # نسخ node_modules من مرحلة deps
 COPY --from=deps /app/node_modules ./node_modules
 

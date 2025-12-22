@@ -1,10 +1,10 @@
-version: "3.8"
-
 services:
   zenobia-app:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=http://161.97.156.42:4000
     container_name: zenobia-frontend
     ports:
       - "4002:3000"
