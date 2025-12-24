@@ -55,6 +55,9 @@ export default function GamesPage() {
   const [gameToDelete, setGameToDelete] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Form submission loading state
+  const [submitting, setSubmitting] = useState(false);
+
   // Form state
   const [title, setTitle] = useState('');
   const [gameType, setGameType] = useState<'crossword' | 'puzzle'>('crossword');
@@ -63,7 +66,7 @@ export default function GamesPage() {
 
   // Crossword specific
   const [words, setWords] = useState<GameWord[]>([
-    { number: 1, direction: 'across', question: '', answer: '', position: { row: 0, col: 0 } },
+    { number: 1, direction: 'across', question: '', answer: '', position: { row: 1, col: 1 } },
   ]);
 
   // Puzzle specific
@@ -122,11 +125,32 @@ export default function GamesPage() {
       return;
     }
 
+    setSubmitting(true);
+
     try {
       if (gameType === 'crossword') {
         const validWords = words.filter((w) => w.answer.trim() !== '' && w.question.trim() !== '');
         if (validWords.length === 0) {
           toast.error('الرجاء إضافة كلمات واحدة على الأقل');
+          setSubmitting(false);
+          return;
+        }
+
+        // Validate that all words have valid positions
+        // Note: Frontend displays 1-based (1,2,3...) but sends 0-based to backend (0,1,2...)
+        // Backend requires positions >= 0, which means user must see >= 1
+        const invalidWord = validWords.find((w) =>
+          w.position.row === undefined ||
+          w.position.col === undefined ||
+          w.position.row < 0 ||
+          w.position.col < 0 ||
+          !Number.isInteger(w.position.row) ||
+          !Number.isInteger(w.position.col)
+        );
+
+        if (invalidWord) {
+          toast.error('الرجاء التأكد من إدخال موقع صحيح لجميع الكلمات (أرقام صحيحة من 1 فما فوق)');
+          setSubmitting(false);
           return;
         }
 
@@ -141,6 +165,10 @@ export default function GamesPage() {
           educationalMessage: educationalMessage.trim() || undefined,
           pointsReward,
         };
+
+        // Debug: Log the data being sent
+        console.log('Sending game data:', JSON.stringify(gameData, null, 2));
+        console.log('Words positions:', validWords.map(w => ({ answer: w.answer, row: w.position.row, col: w.position.col })));
 
         if (editingGame) {
           await gamesAPI.update(editingGame.id, gameData);
@@ -195,6 +223,8 @@ export default function GamesPage() {
         error.response?.data?.error ||
         'حدث خطأ أثناء حفظ اللعبة';
       toast.error(errorMessage);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -245,7 +275,7 @@ export default function GamesPage() {
         // Old structure: {grid: [...], clues: {...}}
         // Skip old structure games or provide default
         words = [
-          { number: 1, direction: 'across', question: '', answer: '', position: { row: 0, col: 0 } },
+          { number: 1, direction: 'across', question: '', answer: '', position: { row: 1, col: 1 } },
         ];
         toast.error('هذه اللعبة تستخدم هيكل قديم، يرجى إعادة إنشائها');
       } else {
@@ -304,7 +334,7 @@ export default function GamesPage() {
     setGameType('crossword');
     setEducationalMessage('');
     setPointsReward(10);
-    setWords([{ number: 1, direction: 'across', question: '', answer: '', position: { row: 0, col: 0 } }]);
+    setWords([{ number: 1, direction: 'across', question: '', answer: '', position: { row: 1, col: 1 } }]);
     setPieces(9);
     setDifficulty('medium');
     setImageUrl('');
@@ -316,7 +346,7 @@ export default function GamesPage() {
     const nextNumber = words.length + 1;
     setWords([
       ...words,
-      { number: nextNumber, direction: 'across', question: '', answer: '', position: { row: 0, col: 0 } },
+      { number: nextNumber, direction: 'across', question: '', answer: '', position: { row: 1, col: 1 } },
     ]);
   };
 
@@ -355,18 +385,22 @@ export default function GamesPage() {
   }
 
   return (
-    <div className="container mx-auto p-6" dir="rtl">
+    <div className="container mx-auto p-4 sm:p-6 overflow-x-hidden" dir="rtl">
       {/* Page Header */}
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-4xl font-bold text-foreground">إدارة الألعاب</h1>
-          <p className="text-muted-foreground text-lg mt-2">
+          <h1 className="text-3xl sm:text-4xl font-bold text-foreground">إدارة الألعاب</h1>
+          <p className="text-muted-foreground text-sm sm:text-lg mt-2">
             إنشاء وتحرير وحذف الألعاب التعليمية
           </p>
         </div>
-        <Button onClick={() => { resetForm(); setShowModal(true); }} size="lg">
-          <Plus className="ml-2 h-5 w-5" />
-          إضافة لعبة جديدة
+        <Button
+          onClick={() => { resetForm(); setShowModal(true); }}
+          size="lg"
+          className="w-full sm:w-auto h-12 rounded-xl px-6 text-base font-semibold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
+        >
+          <Plus className="h-5 w-5" />
+          <span>إضافة لعبة جديدة</span>
         </Button>
       </div>
 
@@ -399,10 +433,11 @@ export default function GamesPage() {
                 setShowModal(true);
               }}
               variant="outline"
-              className="mt-4"
+              className="mt-4 h-11 px-6 rounded-xl flex items-center justify-center gap-2"
             >
-              <Plus className="ml-2 h-4 w-4" />
-              إضافة لعبة
+              <Plus className="h-5 w-5" />
+              <span className="hidden sm:inline">إضافة لعبة جديدة</span>
+              <span className="sm:hidden">إضافة</span>
             </Button>
           </div>
         ) : (
@@ -508,18 +543,20 @@ export default function GamesPage() {
                       variant="outline"
                       size="sm"
                       onClick={() => openEditModal(game)}
-                      className="flex-1 h-9 group/edit hover:bg-primary/5 hover:border-primary/50"
+                      className="flex-1 h-10 rounded-xl group/edit hover:bg-primary/5 hover:border-primary/50 transition-all flex items-center justify-center gap-1.5"
                     >
-                      <Edit className="h-3.5 w-3.5 ml-1.5 group-hover/edit:text-primary" />
-                      تعديل
+                      <Edit className="h-4 w-4 group-hover/edit:text-primary transition-colors" />
+                      <span className="hidden sm:inline">تعديل</span>
+                      <span className="sm:hidden">✏️</span>
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => handleDeleteClick(game.id)}
-                      className="h-9 px-3 text-destructive hover:bg-destructive/10 hover:border-destructive/50"
+                      className="h-10 px-4 rounded-xl text-destructive hover:bg-destructive/10 hover:border-destructive/50 transition-all flex items-center justify-center gap-1.5"
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      <Trash2 className="h-4 w-4" />
+                      <span className="hidden sm:inline">حذف</span>
                     </Button>
                   </div>
                 </div>
@@ -711,21 +748,22 @@ export default function GamesPage() {
                                 </label>
                                 <Input
                                   type="number"
-                                  min="0"
+                                  min="1"
+                                  step="1"
                                   value={word.position.row}
                                   onChange={(e) =>
                                     updateWord(
                                       index,
                                       'position',
-                                      { ...word.position, row: parseInt(e.target.value) || 0 }
+                                      { ...word.position, row: parseInt(e.target.value) || 1 }
                                     )
                                   }
-                                  placeholder="0"
+                                  placeholder="1"
                                   required
                                   className="text-center font-mono"
                                 />
                                 <p className="text-[10px] text-muted-foreground">
-                                  رقم الصف من الأعلى (يبدأ من 0)
+                                  رقم الصف من الأعلى (يبدأ من 1)
                                 </p>
                               </div>
 
@@ -736,21 +774,22 @@ export default function GamesPage() {
                                 </label>
                                 <Input
                                   type="number"
-                                  min="0"
+                                  min="1"
+                                  step="1"
                                   value={word.position.col}
                                   onChange={(e) =>
                                     updateWord(
                                       index,
                                       'position',
-                                      { ...word.position, col: parseInt(e.target.value) || 0 }
+                                      { ...word.position, col: parseInt(e.target.value) || 1 }
                                     )
                                   }
-                                  placeholder="0"
+                                  placeholder="1"
                                   required
                                   className="text-center font-mono"
                                 />
                                 <p className="text-[10px] text-muted-foreground">
-                                  رقم العمود من اليمين (يبدأ من 0)
+                                  رقم العمود من اليمين (يبدأ من 1)
                                 </p>
                               </div>
                             </div>
@@ -758,16 +797,22 @@ export default function GamesPage() {
                             {/* Visual Helper */}
                             <div className="p-3 bg-muted/30 rounded-lg border border-border">
                               <p className="text-xs text-muted-foreground mb-2 font-medium">
-                                💡 مساعد بصري:
+                                💡 مساعد بصري: (الأرقام تبدأ من 1)
                               </p>
-                              <div className="grid gap-1 w-fit" style={{ gridTemplateColumns: `repeat(${Math.max(word.position.col + 3, 5)}, minmax(0, 1fr))` }}>
-                                {[...Array(Math.max(word.position.row + 2, 3))].map((_, rowIdx) => (
+                              <div className="grid gap-1 w-fit" style={{
+                                gridTemplateColumns: `repeat(${Math.max((word.position.col || 1) + (word.direction === 'across' ? Math.max(word.answer.length, 3) : 3), 5)}, minmax(0, 1fr))`
+                              }}>
+                                {[...Array(Math.max((word.position.row || 1) + (word.direction === 'down' ? Math.max(word.answer.length, 2) : 2), 3))].map((_, rowIdx) => (
                                   <React.Fragment key={rowIdx}>
-                                    {[...Array(Math.max(word.position.col + 3, 5))].map((_, colIdx) => {
-                                      const isTarget = rowIdx === word.position.row && colIdx === word.position.col;
+                                    {[...Array(Math.max((word.position.col || 1) + (word.direction === 'across' ? Math.max(word.answer.length, 3) : 3), 5))].map((_, colIdx) => {
+                                      // Convert zero-based iteration to one-based for comparison
+                                      const currentRow = rowIdx + 1;
+                                      const currentCol = colIdx + 1;
+
+                                      const isTarget = currentRow === word.position.row && currentCol === word.position.col;
                                       const isWordPath = word.direction === 'across'
-                                        ? (rowIdx === word.position.row && colIdx >= word.position.col && colIdx < word.position.col + word.answer.length)
-                                        : (colIdx === word.position.col && rowIdx >= word.position.row && rowIdx < word.position.row + word.answer.length);
+                                        ? (currentRow === word.position.row && currentCol >= word.position.col && currentCol < word.position.col + word.answer.length)
+                                        : (currentCol === word.position.col && currentRow >= word.position.row && currentRow < word.position.row + word.answer.length);
 
                                       return (
                                         <div
@@ -780,7 +825,7 @@ export default function GamesPage() {
                                               : 'bg-background border-border text-muted-foreground/60'
                                           }`}
                                         >
-                                          {isTarget ? '★' : `${rowIdx},${colIdx}`}
+                                          {isTarget ? '★' : `${currentRow},${currentCol}`}
                                         </div>
                                       );
                                     })}
@@ -789,7 +834,7 @@ export default function GamesPage() {
                               </div>
                               <div className="mt-2 space-y-1">
                                 <p className="text-[10px] text-muted-foreground">
-                                  ★ = نقطة بداية الكلمة (صف {word.position.row}، عمود {word.position.col})
+                                  ★ = نقطة بداية الكلمة (صف {word.position.row || 1}، عمود {word.position.col || 1})
                                 </p>
                                 {word.answer.length > 0 && (
                                   <p className="text-[10px] text-primary/80">
@@ -885,7 +930,7 @@ export default function GamesPage() {
                 )}
 
                 {/* Form Actions */}
-                <div className="flex gap-2 justify-end pt-4 border-t">
+                <div className="flex gap-3 justify-end pt-4 border-t">
                   <Button
                     type="button"
                     variant="ghost"
@@ -893,11 +938,24 @@ export default function GamesPage() {
                       setShowModal(false);
                       resetForm();
                     }}
+                    disabled={submitting}
+                    className="h-11 px-6 rounded-xl flex items-center justify-center"
                   >
-                    إلغاء
+                    <span>إلغاء</span>
                   </Button>
-                  <Button type="submit">
-                    {editingGame ? 'حفظ التعديلات' : 'إنشاء اللعبة'}
+                  <Button
+                    type="submit"
+                    disabled={submitting}
+                    className="h-11 px-6 rounded-xl min-w-[140px] flex items-center justify-center"
+                  >
+                    {submitting ? (
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                        <span>جاري الحفظ...</span>
+                      </div>
+                    ) : (
+                      <span>{editingGame ? 'حفظ التعديلات' : 'إنشاء اللعبة'}</span>
+                    )}
                   </Button>
                 </div>
               </form>

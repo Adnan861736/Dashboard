@@ -320,7 +320,7 @@ export default function UsersPage() {
                   <Input
                     value={editData.phoneNumber}
                     onChange={(e) => setEditData({ ...editData, phoneNumber: e.target.value })}
-                    placeholder="+963998107722"
+                    placeholder="+963912345678"
                     required
                   />
                 </div>

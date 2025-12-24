@@ -43,6 +43,10 @@ export default function ArticlesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [newCategory, setNewCategory] = useState({ name: '' });
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [categoryToDelete, setCategoryToDelete] = useState<string | null>(null);
+  const [showDeleteCategoryDialog, setShowDeleteCategoryDialog] = useState(false);
+  const [deletingCategory, setDeletingCategory] = useState(false);
 
   // Delete confirmation dialog
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -309,13 +313,52 @@ export default function ArticlesPage() {
     }
 
     try {
-      await categoriesAPI.create({ name: newCategory.name });
-      toast.success('تمت إضافة الفئة بنجاح');
+      if (editingCategory) {
+        await categoriesAPI.update(editingCategory.id, { name: newCategory.name });
+        toast.success('تم تعديل الفئة بنجاح');
+      } else {
+        await categoriesAPI.create({ name: newCategory.name });
+        toast.success('تمت إضافة الفئة بنجاح');
+      }
       setShowCategoryModal(false);
       setNewCategory({ name: '' });
+      setEditingCategory(null);
       fetchCategories();
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'حدث خطأ');
+    }
+  };
+
+  const handleEditCategory = (category: Category) => {
+    setEditingCategory(category);
+    setNewCategory({ name: category.name });
+    setShowCategoryModal(true);
+  };
+
+  const handleDeleteCategoryClick = (categoryId: string) => {
+    setCategoryToDelete(categoryId);
+    setShowDeleteCategoryDialog(true);
+  };
+
+  const handleConfirmDeleteCategory = async () => {
+    if (!categoryToDelete) return;
+
+    try {
+      setDeletingCategory(true);
+      await categoriesAPI.delete(categoryToDelete);
+      toast.success('تم حذف الفئة بنجاح');
+      fetchCategories();
+      setShowDeleteCategoryDialog(false);
+      setCategoryToDelete(null);
+    } catch (error: any) {
+      console.error('Error deleting category:', error);
+      const errorMessage =
+        error.response?.data?.message ||
+        error.response?.data?.error ||
+        'حدث خطأ أثناء الحذف';
+      toast.error(errorMessage);
+    } finally {
+      setDeletingCategory(false);
     }
   };
 
@@ -693,10 +736,10 @@ export default function ArticlesPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FolderPlus className="h-5 w-5 text-primary" />
-                إضافة فئة جديدة
+                {editingCategory ? 'تعديل الفئة' : 'إضافة فئة جديدة'}
               </CardTitle>
               <p className="text-sm text-muted-foreground">
-                أضف فئة جديدة لتنظيم المقالات
+                {editingCategory ? 'عدّل اسم الفئة' : 'أضف فئة جديدة لتنظيم المقالات'}
               </p>
             </CardHeader>
             <CardContent>
@@ -716,13 +759,23 @@ export default function ArticlesPage() {
                     onClick={() => {
                       setShowCategoryModal(false);
                       setNewCategory({ name: '' });
+                      setEditingCategory(null);
                     }}
                   >
                     إلغاء
                   </Button>
                   <Button type="submit">
-                    <Plus className="h-4 w-4 ml-2" />
-                    إضافة
+                    {editingCategory ? (
+                      <>
+                        <Edit className="h-4 w-4 ml-2" />
+                        حفظ التعديل
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="h-4 w-4 ml-2" />
+                        إضافة
+                      </>
+                    )}
                   </Button>
                 </div>
               </form>
@@ -730,14 +783,34 @@ export default function ArticlesPage() {
               {/* عرض التصنيفات الحالية */}
               {categories.length > 0 && (
                 <div className="mt-6 pt-6 border-t border-border">
-                  <h4 className="text-sm font-semibold text-foreground mb-3">الفئات الحالية</h4>
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                  <h4 className="text-sm font-semibold text-foreground mb-3">الفئات الحالية ({categories.length})</h4>
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
                     {categories.map((category) => (
                       <div
                         key={category.id}
-                        className="p-3 bg-primary/5 rounded-lg border border-primary/20 hover:bg-primary/10 transition-colors"
+                        className="p-3 bg-primary/5 rounded-lg border border-primary/20 hover:bg-primary/10 transition-colors flex items-center justify-between gap-3"
                       >
-                        <p className="font-medium text-foreground">{category.name}</p>
+                        <p className="font-medium text-foreground flex-1">{category.name}</p>
+                        <div className="flex gap-1">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditCategory(category)}
+                            className="h-8 w-8 p-0 hover:bg-primary/20"
+                          >
+                            <Edit className="h-4 w-4 text-primary" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteCategoryClick(category.id)}
+                            className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -748,7 +821,7 @@ export default function ArticlesPage() {
         </div>
       )}
 
-      {/* Delete Confirmation Dialog */}
+      {/* Delete Article Confirmation Dialog */}
       <ConfirmDialog
         open={showDeleteDialog}
         onOpenChange={setShowDeleteDialog}
@@ -759,6 +832,19 @@ export default function ArticlesPage() {
         cancelText="إلغاء"
         variant="danger"
         loading={deleting}
+      />
+
+      {/* Delete Category Confirmation Dialog */}
+      <ConfirmDialog
+        open={showDeleteCategoryDialog}
+        onOpenChange={setShowDeleteCategoryDialog}
+        onConfirm={handleConfirmDeleteCategory}
+        title="تأكيد حذف الفئة"
+        description="هل أنت متأكد من حذف هذه الفئة؟ قد يؤثر ذلك على المقالات المرتبطة بها. لا يمكن التراجع عن هذا الإجراء."
+        confirmText="نعم، احذف الفئة"
+        cancelText="إلغاء"
+        variant="danger"
+        loading={deletingCategory}
       />
     </div>
   );

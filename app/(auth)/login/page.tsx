@@ -82,7 +82,7 @@ export default function LoginPage() {
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
                   className="w-full px-4 py-3.5 pr-11 border-2 border-input rounded-xl bg-background/50 text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-4 focus:ring-primary/20 focus:border-primary transition-all duration-200 hover:border-primary/50"
-                  placeholder="+963998107722"
+                  placeholder="+963912345678"
                   dir="ltr"
                 />
               </div>
